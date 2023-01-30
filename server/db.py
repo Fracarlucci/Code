@@ -1,5 +1,6 @@
-from sqlalchemy import create_engine, Column, Float, Integer, DateTime
+from sqlalchemy import create_engine, Column, ForeignKey, Float, Integer, DateTime
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref, relationship
 
 engine = create_engine('sqlite:///sensors.db')
 
@@ -9,10 +10,19 @@ class SensorsData(Base):
     __tablename__ = 'sensorsData'
     id = Column(Integer, primary_key=True)
     dateTime = Column(DateTime)
-    acceleration = Column(Float)
-    light = Column(Float)
     pressure = Column(Float)
     temperature = Column(Float)
     humidity = Column(Float)
 
+    accelerationId = Column(Integer, ForeignKey('acceleration.id'))
+    acceleration = relationship("Acceleration", backref=backref("sensorsData", uselist=False))
+
+class Acceleration(Base):
+    __tablename__ = 'acceleration'
+    id = Column(Integer, primary_key=True)
+
+    x = Column(Float)
+    y = Column(Float)
+    z = Column(Float)
+    
 Base.metadata.create_all(engine)
