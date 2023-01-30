@@ -12,8 +12,8 @@ while not wlan.isconnected():
     machine.idle()
 print("WiFi connected succesfully")
 print(wlan.ifconfig())
-# sensors.get_acceleration(),
-list = [sensors.get_light(), sensors.get_pressure(), sensors.get_temperature(), sensors.get_humidity()]
+
+list = [sensors.get_acceleration(), sensors.get_pressure(), sensors.get_temperature(), sensors.get_humidity()]
 post = dict()
 for i in list:
     post.update(i)
