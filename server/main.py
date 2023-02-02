@@ -30,10 +30,12 @@ def read_sensors(id: int):
 def add_sensors_data(sensorsData: SensorsDataModel):
     if len(sensorsData.acceleration) != 3:
         return {"error": "Acceleration must have 3 values (x, y, z)"}
+    
     acceleration = db.Acceleration(x=sensorsData.acceleration[0], y=sensorsData.acceleration[1], z=sensorsData.acceleration[2])
     newData = db.SensorsData(dateTime = datetime.now(), acceleration=acceleration, accelerationId=acceleration.id,
         pressure=sensorsData.pressure, temperature=sensorsData.temperature, humidity=sensorsData.humidity)
     session.add(newData)
     session.commit()
+
     return {"message": "Data added successfully"}
     
