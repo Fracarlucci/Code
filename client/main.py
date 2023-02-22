@@ -17,7 +17,8 @@ print("WiFi connected succesfully")
 print(wlan.ifconfig())
 
 while True:
-    list = [sensors.get_acceleration(), sensors.get_pressure(), sensors.get_temperature(), sensors.get_humidity()]
+    list = [sensors.get_acceleration(), sensors.get_pressure(), sensors.get_temperature(),
+        sensors.get_humidity(), sensors.get_battery_percentage()]
     post = dict()
     for i in list:
         post.update(i)

@@ -14,6 +14,7 @@ class SensorsDataModel(BaseModel):
     pressure: float
     temperature: float
     humidity: float
+    battery_percentage: float
 
 @app.get("/sensors/{id}")
 def read_sensors(id: int):
@@ -33,7 +34,7 @@ def add_sensors_data(sensorsData: SensorsDataModel):
     
     acceleration = db.Acceleration(x=sensorsData.acceleration[0], y=sensorsData.acceleration[1], z=sensorsData.acceleration[2])
     newData = db.SensorsData(dateTime = datetime.now(), acceleration=acceleration, accelerationId=acceleration.id,
-        pressure=sensorsData.pressure, temperature=sensorsData.temperature, humidity=sensorsData.humidity)
+        pressure=sensorsData.pressure, temperature=sensorsData.temperature, humidity=sensorsData.humidity, battery_percentage=sensorsData.battery_percentage)
     session.add(newData)
     session.commit()
 

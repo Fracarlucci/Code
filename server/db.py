@@ -13,6 +13,7 @@ class SensorsData(Base):
     pressure = Column(Float)
     temperature = Column(Float)
     humidity = Column(Float)
+    battery_percentage = Column(Float)
 
     accelerationId = Column(Integer, ForeignKey('acceleration.id'))
     acceleration = relationship("Acceleration", backref=backref("sensorsData", uselist=False))
