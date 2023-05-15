@@ -9,6 +9,13 @@ import db
 import requests
 import socketio
 
+class SensorsDataModel(BaseModel):
+    acceleration: tuple
+    pressure: float
+    temperature: float
+    humidity: float
+    battery_percentage: float
+
 Session = sessionmaker(bind=db.engine)
 session = Session()
 
@@ -28,12 +35,11 @@ def connect_error(data):
 def disconnect():
     print("I'm disconnected!")
 
-class SensorsDataModel(BaseModel):
-    acceleration: tuple
-    pressure: float
-    temperature: float
-    humidity: float
-    battery_percentage: float
+@sio.event
+def read_sensors():
+    fipy_url = ""
+    response = requests.get(url=fipy_url + "read-sensors")
+    print(response.text)
 
 @app.get("/sensors/{id}")
 async def read_sensors(id: int):
@@ -74,24 +80,19 @@ def shutdown_event():
 
 if __name__ == '__main__':
     url = " http://10.201.104.210:80/"
-    owner_key = secrets.token_bytes(32)
-    unregister_key = secrets.token_bytes(32)
-    body = {"owner": "", "vu_url": "", "owner_key": owner_key.hex(), "friend_key": "", "url": "", "unregister_key": unregister_key.hex()}
-    response = requests.post(url=url + "initialize", data=body)
+    hal_key = secrets.token_bytes(32)
+    configuration = []
+    for i in SensorsDataModel.__fields__.keys():
+        configuration.append({"type": i, "feature": "sensor", "permission": "owner", "schedulable": "true"})
+
+    body = {"brand": "Raspberry-Pi", "model": "3 model B", "hal_key": hal_key.hex(), "configuration": configuration}
+    response = requests.post(url + "register", data=body)
 
     if response.status_code == 200:
-        print(response.json())
-
-        body = {"brand": "", "model": "", "hal_key": "", "configuration": ""}
-        response = requests.post(url + "register", data=body)
-
-        if response.status_code == 200:
-            print(response.json())    
-            sio.connect('http://10.201.104.210:80/socket.io')
-            print('my sid is', sio.sid)
-        else:
-            print("Errore nella chiamata API:", response.status_code)
+        print(response.json())    
+        sio.connect('http://10.201.104.210:80/socket.io')
+        print('my sid is', sio.sid)
     else:
         print("Errore nella chiamata API:", response.status_code)
-
+    
     uvicorn.run(app, host="10.201.104.210", port=8000)
