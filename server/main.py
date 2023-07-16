@@ -21,6 +21,8 @@ async def read_sensors(id: int):
     query = session.query(db.SensorsData, db.Acceleration)
     if id == 0:
         data = query.join(db.Acceleration).all()
+    elif id == -1:
+        data = query.join(db.Acceleration).order_by(db.SensorsData.dateTime.desc()).first()
     else:
         data = query.join(db.Acceleration).filter_by(id=id).first()
     if data == None:

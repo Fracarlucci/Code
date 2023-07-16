@@ -8,13 +8,7 @@ import uvicorn
 import db
 import requests
 import socketio
-
-class SensorsDataModel(BaseModel):
-    acceleration: tuple
-    pressure: float
-    temperature: float
-    humidity: float
-    battery_percentage: float
+import socket
 
 Session = sessionmaker(bind=db.engine)
 session = Session()
@@ -22,6 +16,13 @@ session = Session()
 app = FastAPI()
 
 sio = socketio.Client()
+
+class SensorsDataModel(BaseModel):
+    acceleration: tuple
+    pressure: float
+    temperature: float
+    humidity: float
+    battery_percentage: float
 
 @sio.event
 def connect():
@@ -35,17 +36,34 @@ def connect_error(data):
 def disconnect():
     print("I'm disconnected!")
 
+# Richiesta verso fipy
 @sio.event
 def read_sensors():
-    fipy_url = ""
-    response = requests.get(url=fipy_url + "read-sensors")
-    print(response.text)
+    print("Richiesta verso fipy")
+    server_address = ('192.168.1.11', 8000)
+    path = "/read-sensors"
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    client_socket.connect(server_address)
+    print("Connected to the server:", server_address)
+
+    request = "GET {} HTTP/1.1\r\nHost: {}\r\n\r\n".format(path, server_address[0])
+    client_socket.send(request.encode())
+
+    response = client_socket.recv(1024).decode()
+
+    client_socket.close()
+
+    return "OK", 200
 
 @app.get("/sensors/{id}")
 async def read_sensors(id: int):
     query = session.query(db.SensorsData, db.Acceleration)
     if id == 0:
         data = query.join(db.Acceleration).all()
+    elif id == -1:
+        data = query.join(db.Acceleration).order_by(db.SensorsData.dateTime.desc()).first()
     else:
         data = query.join(db.Acceleration).filter_by(id=id).first()
     if data == None:
@@ -79,20 +97,22 @@ def shutdown_event():
     sio.disconnect()
 
 if __name__ == '__main__':
-    url = " http://10.201.104.210:80/"
-    hal_key = secrets.token_bytes(32)
-    configuration = []
-    for i in SensorsDataModel.__fields__.keys():
-        configuration.append({"type": i, "feature": "sensor", "permission": "owner", "schedulable": "true"})
+    # TODO aggiustare registrazione
+    # url = " http://10.201.104.210:80/"
+    # hal_key = secrets.token_bytes(32)
+    # configuration = []
+    # for i in SensorsDataModel.__fields__.keys():
+    #     configuration.append({"type": i, "feature": "sensor", "permission": "owner", "schedulable": "true"})
 
-    body = {"brand": "Raspberry-Pi", "model": "3 model B", "hal_key": hal_key.hex(), "configuration": configuration}
-    response = requests.post(url + "register", data=body)
+    # body = {"brand": "Raspberry-Pi", "model": "3 model B", "hal_key": hal_key.hex(), "configuration": configuration}
+    # response = requests.post(url + "register", data=body)
 
-    if response.status_code == 200:
-        print(response.json())    
-        sio.connect('http://10.201.104.210:80/socket.io')
-        print('my sid is', sio.sid)
-    else:
-        print("Errore nella chiamata API:", response.status_code)
+    # if response.status_code == 200:
+    #     print(response.json())
+    # else:
+    #     print("Errore nella chiamata API:", response.status_code)
     
-    uvicorn.run(app, host="10.201.104.210", port=8000)
+    sio.connect('http://192.168.1.8:80/socket.io')
+    print('my sid is', sio.sid, sio.get_sid())
+
+    uvicorn.run(app, host="192.168.1.8", port=8000)
