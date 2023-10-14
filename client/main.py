@@ -14,8 +14,8 @@ sleep_time = 10
 # Connect to WiFi
 if not wlan.isconnected():
     print("Trying to connect...   ")
-    # wlan.connect(ssid='ap_rasp', auth=(WLAN.WPA2, 'password'))
-    wlan.connect(ssid='Vodafone-A80383340', auth=(WLAN.WPA2, 'HXHfMXLK2dqPMgHL'))
+    wlan.connect(ssid='ap_rasp', auth=(WLAN.WPA2, 'password'))
+    # wlan.connect(ssid='Vodafone-A80383340', auth=(WLAN.WPA2, 'HXHfMXLK2dqPMgHL'))
 
     while not wlan.isconnected():
         machine.idle()
@@ -35,7 +35,7 @@ def read_sensors(seconds: int = 0):
     jsonPost = json.dumps(post)
     print(jsonPost)
 
-    response = urequests.post("http://192.168.1.8:8000/sensors/", data=jsonPost) # 10.3.141.1
+    response = urequests.post("http://192.168.1.21:8000/sensors/", data=jsonPost) # 192.168.1.8
 
     print(response.text)
 
@@ -98,7 +98,7 @@ def handle_client(client_socket):
 server_socket = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
 server_socket.setsockopt(usocket.SOL_SOCKET, usocket.SO_REUSEADDR, 1)
 
-server_address = ('192.168.1.11', 8000)
+server_address = ('10.3.141.177', 8000) # 192.168.1.11
 server_socket.bind(server_address)
 
 server_socket.listen(5)

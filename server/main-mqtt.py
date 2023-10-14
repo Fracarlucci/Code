@@ -1,4 +1,6 @@
 import json
+import pywifi
+import time
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
@@ -10,6 +12,7 @@ import paho.mqtt.client as paho
 import paho.mqtt.publish as publish
 import secrets
 import socket
+import asyncio
 
 Session = sessionmaker(bind=db.engine)
 session = Session()
@@ -26,7 +29,7 @@ class SensorsDataModel(BaseModel):
 # Richiesta verso fipy
 def on_message(mosq, obj, msg):
     print("Richiesta verso fipy")
-    server_address = ('192.168.1.11', 8000)
+    server_address = ('10.3.141.177', 8000) # 192.168.1.11
     path = "/read-sensors"
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -70,34 +73,128 @@ async def add_sensors_data(sensorsData: SensorsDataModel):
     session.commit()
 
     # mqtt publish
+    raspberry = session.query(db.Raspberry).first()
     mqttData = json.dumps(dict(sensorsData))
-    result = publish.single(topic="sensors/post_data", payload=mqttData, hostname="broker.mqtt-dashboard.com")
+    publish.single(topic=raspberry.hal_key+"/post-sensors", payload=mqttData, hostname="broker.mqtt-dashboard.com")
 
-    return {"message": "Data added successfully"}
+    return {"message": "Post request successfull"}
+
+def initialize_device():
+    session.add(db.Raspberry(
+        id=1,
+        hal_key=secrets.token_bytes(32).hex(),
+        unregister_key=secrets.token_bytes(32).hex(),
+        owner_key=secrets.token_bytes(32).hex(),
+        brand="Raspberry-Pi",
+        model="3 model B",
+        owner="Francesco",
+        location=ssid
+    ))
+    session.commit()
+
+    raspberry = session.query(db.Raspberry).first()
+
+    body = {
+        "owner": raspberry.owner,
+        "owner_key": raspberry.owner_key,
+        "unregister_key": raspberry.unregister_key
+    }
     
+    jsonPost = json.dumps(body)
+    response = requests.post(url + "initialize", data=jsonPost)
+
+    if response.status_code == 200:
+        print(response.json())   
+    else:
+        print("Errore nella chiamata API:", response.status_code, response.text)
+        db.Raspberry.__table__.drop(db.engine)
+        db.engine.dispose()
+        exit(1)
+
+def register_device(raspberry: db.Raspberry, ssid: str):
+    configuration = []
+
+    for i in SensorsDataModel.model_fields.keys():
+        configuration.append({
+            "event": "sensor",
+            "type": i,
+            "feature": "",
+            "permission": "private",
+            "schedulable": "True"
+        })
+
+    body = {
+        "brand": "Raspberry-Pi",
+        "model": "3 model B",
+        "hal_key": raspberry.hal_key,
+        "configuration": configuration,
+        "location": raspberry.location
+    }
+    
+    jsonPost = json.dumps(body)
+    response = requests.post(url + "register", data=jsonPost)
+
+    if response.status_code == 200:
+        print(response.json())
+    else:
+        print("Errore nella chiamata API:", response.status_code, response.text)
+        db.Raspberry.__table__.drop(db.engine)
+        db.engine.dispose()
+        exit(1)
+
+def initialize_relationship():
+    pass
+
+def get_current_ssid():
+    wifi = pywifi.PyWiFi()
+    iface = wifi.interfaces()[0]
+
+    iface.scan()
+    scan_results = iface.scan_results()
+
+    for result in scan_results:
+        if result.ssid:
+            current_ssid = result.ssid
+            break
+
+    return current_ssid
+
+def check_location():
+    print("Checking location...")
+    if(ssid != raspberry.location):
+        raspberry.location = ssid
+        session.commit()
+
+        body = {"location": raspberry.location}
+        jsonPost = json.dumps(body)
+
+        response = requests.post(url + "update-vo-info", data=jsonPost)
+
+        if response.status_code == 200:
+            print(response.json())
+        else:
+            print("Errore nella chiamata API:", response.status_code, response.text)
+     
 if __name__ == '__main__':
-    # TODO aggiustare registrazione
-    # url = " http://10.201.104.210:80/"
-    # hal_key = secrets.token_bytes(32)
-    # configuration = []
-    # for i in SensorsDataModel.__fields__.keys():
-    #     configuration.append({"type": i, "feature": "sensor", "permission": "owner", "schedulable": "true"})
+    url = "http://10.62.2.216:80/"  # "http://192.168.1.2:80/"
+    raspberry = session.query(db.Raspberry).first()
+    ssid = get_current_ssid()
 
-    # body = {"brand": "Raspberry-Pi", "model": "3 model B", "hal_key": hal_key.hex(), "configuration": configuration}
-    # response = requests.post(url + "register", data=body)
-
-    # if response.status_code == 200:
-    #     print(response.json())    
-    # else:
-    #     print("Errore nella chiamata API:", response.status_code)
+    # First time configuration
+    if raspberry == None:
+        initialize_device()
+        raspberry = session.query(db.Raspberry).first()
+        register_device(raspberry, ssid)
+    
 
     client = paho.Client()
     client.on_message = on_message
     client.on_publish = on_publish
 
-    #client.tls_set('ca.crt', certfile='server.crt', keyfile='server.key')
     client.connect("broker.mqtt-dashboard.com", 1883, 60)
-    client.subscribe("sensors/get_data", 0)
+    client.subscribe(raspberry.hal_key + "/read-sensors", 0)
     client.loop_start()
 
-    uvicorn.run(app, host="192.168.1.8", port=8000)
+    check_location()
+
+    uvicorn.run(app, host="10.62.2.216", port=8000) # 192.168.1.2

@@ -40,7 +40,7 @@ def disconnect():
 @sio.event
 def read_sensors():
     print("Richiesta verso fipy")
-    server_address = ('192.168.1.11', 8000)
+    server_address = ('10.3.141.177', 8000) # 192.168.1.11
     path = "/read-sensors"
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -86,11 +86,9 @@ async def add_sensors_data(sensorsData: SensorsDataModel):
     if sio.sid is not None:
         webSocket_data = json.dumps(dict(sensorsData))
         sio.emit(event="add_sensors_data", data=webSocket_data)
-        print("Message sent!")
+        return {"message": "Post request successfull"}
     else:
-        print("Websocket not connected!")
-
-    return {"message": "Data added successfully"}
+        return {"error": "Websocket not connected!"}
 
 @app.on_event("shutdown")
 def shutdown_event():
