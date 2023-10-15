@@ -31,6 +31,7 @@ class Raspberry(Base):
     id = Column(Integer)
     hal_key = Column(String, primary_key=True)
     unregister_key = Column(String)
+    url = Column(String)
     brand = Column(String)
     model = Column(String)
     owner = Column(String)

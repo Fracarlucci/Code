@@ -85,6 +85,7 @@ def initialize_device():
         hal_key=secrets.token_bytes(32).hex(),
         unregister_key=secrets.token_bytes(32).hex(),
         owner_key=secrets.token_bytes(32).hex(),
+        url=socket.gethostbyname(socket.gethostname()),
         brand="Raspberry-Pi",
         model="3 model B",
         owner="Francesco",
@@ -97,11 +98,12 @@ def initialize_device():
     body = {
         "owner": raspberry.owner,
         "owner_key": raspberry.owner_key,
-        "unregister_key": raspberry.unregister_key
+        "unregister_key": raspberry.unregister_key,
+        "url": raspberry.url
     }
     
-    jsonPost = json.dumps(body)
-    response = requests.post(url + "initialize", data=jsonPost)
+    payload = json.dumps(body)
+    response = requests.post(url + "initialize", data=payload)
 
     if response.status_code == 200:
         print(response.json())   
@@ -131,8 +133,8 @@ def register_device(raspberry: db.Raspberry, ssid: str):
         "location": raspberry.location
     }
     
-    jsonPost = json.dumps(body)
-    response = requests.post(url + "register", data=jsonPost)
+    payload = json.dumps(body)
+    response = requests.post(url + "register", data=payload)
 
     if response.status_code == 200:
         print(response.json())
@@ -143,7 +145,15 @@ def register_device(raspberry: db.Raspberry, ssid: str):
         exit(1)
 
 def initialize_relationship():
-    pass
+    body = {
+        "owner": raspberry.owner,
+        "owner_key": raspberry.owner_key,
+        "oor-list": []
+    }
+    payload = json.dumps(body)
+
+    response = requests.post(url + "initialize-relationship", data=payload)
+    print("POST '/initialize-relationship':", response.status_code, response.json())
 
 def get_current_ssid():
     wifi = pywifi.PyWiFi()
@@ -163,20 +173,17 @@ def check_location():
     print("Checking location...")
     if(ssid != raspberry.location):
         raspberry.location = ssid
+        raspberry.url = socket.gethostbyname(socket.gethostname())
         session.commit()
 
-        body = {"location": raspberry.location}
-        jsonPost = json.dumps(body)
+        body = {"location": raspberry.location, "url": raspberry.url}
+        payload = json.dumps(body)
 
-        response = requests.post(url + "update-vo-info", data=jsonPost)
-
-        if response.status_code == 200:
-            print(response.json())
-        else:
-            print("Errore nella chiamata API:", response.status_code, response.text)
+        response = requests.post(url + "update-vo-info", data=payload)
+        print("POST '/update-vo-info':", response.status_code, response.json())
      
 if __name__ == '__main__':
-    url = "http://10.62.2.216:80/"  # "http://192.168.1.2:80/"
+    url = "http://" + socket.gethostbyname(socket.gethostname()) + ":80/"
     raspberry = session.query(db.Raspberry).first()
     ssid = get_current_ssid()
 
@@ -185,7 +192,7 @@ if __name__ == '__main__':
         initialize_device()
         raspberry = session.query(db.Raspberry).first()
         register_device(raspberry, ssid)
-    
+        initialize_relationship()    
 
     client = paho.Client()
     client.on_message = on_message
@@ -197,4 +204,4 @@ if __name__ == '__main__':
 
     check_location()
 
-    uvicorn.run(app, host="10.62.2.216", port=8000) # 192.168.1.2
+    uvicorn.run(app, host=raspberry.url, port=8000)
