@@ -135,14 +135,7 @@ def register_device(raspberry: db.Raspberry, ssid: str):
     
     payload = json.dumps(body)
     response = requests.post(url + "register", data=payload)
-
-    if response.status_code == 200:
-        print(response.json())
-    else:
-        print("Errore nella chiamata API:", response.status_code, response.text)
-        db.Raspberry.__table__.drop(db.engine)
-        db.engine.dispose()
-        exit(1)
+    print("POST '/register':", response.status_code, response.json())
 
 def initialize_relationship():
     body = {
