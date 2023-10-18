@@ -1,11 +1,22 @@
 from sqlalchemy import create_engine, Column, ForeignKey, Float, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
+from pydantic import BaseModel
+from sqlalchemy.orm import sessionmaker
 
-engine = create_engine('sqlite:///./server/sensors.db', connect_args={"check_same_thread": False})
+
+engine = create_engine('sqlite:///./server/database/sensors.db', connect_args={"check_same_thread": False})
+Session = sessionmaker(bind=engine)
+session = Session()
 
 Base = declarative_base()
 
+class SensorsDataModel(BaseModel):
+    acceleration: tuple
+    pressure: float
+    temperature: float
+    humidity: float
+    battery_percentage: float
 class SensorsData(Base):
     __tablename__ = 'sensorsData'
     id = Column(Integer, primary_key=True)
