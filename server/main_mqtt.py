@@ -16,7 +16,7 @@ if __name__ == '__main__':
     if raspberry == None:
         svo_comm.initialize_device(ssid, url)
         raspberry = db.session.query(db.Raspberry).first()
-        svo_comm.register_device(raspberry)
+        svo_comm.register_device(raspberry, url)
         svo_comm.initialize_relationship(raspberry, url)    
 
     utils.set_up_mqtt(raspberry)
