@@ -1,6 +1,5 @@
 import json
 import pywifi
-import time
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
@@ -12,7 +11,6 @@ import paho.mqtt.client as paho
 import paho.mqtt.publish as publish
 import secrets
 import socket
-import asyncio
 
 Session = sessionmaker(bind=db.engine)
 session = Session()
@@ -84,7 +82,7 @@ def initialize_device():
         id=1,
         hal_key=secrets.token_bytes(32).hex(),
         unregister_key=secrets.token_bytes(32).hex(),
-        owner_key=secrets.token_bytes(32).hex(),
+        owner_key="key",#secrets.token_bytes(32).hex(),
         url=socket.gethostbyname(socket.gethostname()),
         brand="Raspberry-Pi",
         model="3 model B",
